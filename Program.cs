@@ -6,19 +6,64 @@ using static System.Console;
 
 namespace SnakeGame
 {
+    class Game
+    {
+        private static async Task Main(string[] args)
+        {
+            SetWindowSize(LargestWindowWidth, LargestWindowHeight);
+            SetWindowPosition(0, 0);
+
+            WriteLine("Enter walls' length (X and Y)");
+
+            int[] coords;
+            do
+            {
+                int c = 0;
+                coords = ReadLine().Split().Where(x => int.TryParse(x, out c)).Select(x => c).ToArray();
+
+                if (coords.Length < 2) WriteLine("Invalid input: requires 2 numbers - X and Y lengths");
+            }
+            while (coords.Length < 2);
+
+            WriteLine("Enter walls', snake's and food's characters");
+
+            char[] wallChars;
+            do
+            {
+                char ch = default;
+                wallChars = ReadLine().Split().Where(x => char.TryParse(x, out ch)).Select(x => ch).ToArray();
+
+                if (wallChars.Length < 3) WriteLine("Invalid input: requires 3 symbols - walls', snake's and food's characters");
+            }
+            while (wallChars.Length < 3);
+
+            WriteLine("Enter snake's speed (1 - the slowest, 999 - the fastest, -1 - default)");
+
+            int speed = int.Parse(ReadLine());
+
+            Clear();
+
+            Walls.CreateWalls(coords[0], coords[1], wallChars[0]);
+
+            Snake snake = new Snake(speed, wallChars[1]);
+
+            Food.SetFoodSymbol(wallChars[2]);
+            Food.GenerateFood(snake.Points);
+
+            CursorVisible = false;
+
+            await Task.Run(snake.Move);
+
+            SetCursorPosition(0, Walls.EndWall.y + 1);
+
+            WriteLine("Game over");
+
+            ReadKey();
+        }
+    }
+
     class Snake
     {
-        public delegate void MoveEventHandler(Snake snake);
-
-        public static event MoveEventHandler Moved;
-        public static bool CanMove { get; set; }
-        public Point Head { get; private set; }
-        public List<Point> Points { get; private set; }
-        private Rotation rotation;
-        private int speed;
-        private char snakeSymbol;
-        private bool hasRotated;
-
         public Snake(int speed, char symbol)
         {
             Points = new List<Point> { (1, 1) };
@@ -29,6 +74,8 @@ namespace SnakeGame
 
             rotation = Rotation.Right;
 
+            if (speed >= 1000 || speed <= 0) speed = 750;
+
             this.speed = speed;
 
             snakeSymbol = symbol;
@@ -36,9 +83,23 @@ namespace SnakeGame
             Drawer.Draw(1, 1, snakeSymbol);
         }
 
-        public async void Move()
+        public delegate void MoveEventHandler(Snake snake);
+
+        public static event MoveEventHandler Moved;
+
+        public static bool CanMove { get; set; }
+        public List<Point> Points { get; private set; }
+        public Point Head { get; private set; }
+        private Rotation rotation;
+        private int speed;
+        private char snakeSymbol;
+        private bool hasRotated;
+
+        public async Task Move()
         {
             if (!CanMove) return;
+
+            ChangeRotation();
 
             while (CanMove)
             {
@@ -59,47 +120,52 @@ namespace SnakeGame
                 }
 
                 Points.Add(Points[^1] + bias);
-                Drawer.Clear(Points[0].x, Points[0].y);
+
+                Drawer.Clear(Points[0]);
 
                 Head = Points[^1];
 
                 Points.RemoveAt(0);
-                Drawer.Draw(Points[^1].x, Points[^1].y, snakeSymbol);
+
+                Drawer.Draw(Points[^1], snakeSymbol);
 
                 Moved?.Invoke(this);
 
                 await Task.Delay(1000 - speed);
             }
-        }
 
-        public void ChangeRotation()
-        {
-            while (CanMove)
+            async void ChangeRotation()
             {
-                if (hasRotated) continue;
-
-                hasRotated = true;
-
-                Rotation newRotation = ReadKey(true).Key switch
+                while (CanMove)
                 {
-                    ConsoleKey.UpArrow => Rotation.Up,
-                    ConsoleKey.DownArrow => Rotation.Down,
-                    ConsoleKey.LeftArrow => Rotation.Left,
-                    ConsoleKey.RightArrow => Rotation.Right,
-                    _ => rotation
-                };
+                    await Task.Delay(1);
 
-                if (
-                    newRotation == Rotation.Left && rotation != Rotation.Right
-                    || newRotation == Rotation.Right && rotation != Rotation.Left
-                    || newRotation == Rotation.Down && rotation != Rotation.Up
-                    || newRotation == Rotation.Up && rotation != Rotation.Down
-                   )
-                    rotation = newRotation;
+                    if (hasRotated) continue;
+
+                    Rotation newRotation = ReadKey(true).Key switch
+                    {
+                        ConsoleKey.UpArrow => Rotation.Up,
+                        ConsoleKey.DownArrow => Rotation.Down,
+                        ConsoleKey.LeftArrow => Rotation.Left,
+                        ConsoleKey.RightArrow => Rotation.Right,
+                        _ => rotation
+                    };
+
+                    hasRotated = true;
+
+
+                    if (
+                        newRotation == Rotation.Left && rotation != Rotation.Right
+                        || newRotation == Rotation.Right && rotation != Rotation.Left
+                        || newRotation == Rotation.Down && rotation != Rotation.Up
+                        || newRotation == Rotation.Up && rotation != Rotation.Down
+                       )
+                        rotation = newRotation;
+                }
             }
         }
 
-        public void CreateNewTail() => Points.Add(Points[^1]);
+        public void CreateTail() => Points.Add(Points[^1]);
 
         public enum Rotation
         {
@@ -128,12 +194,9 @@ namespace SnakeGame
 
             EndWall = Walls_[^1];
 
-            for (int i = 1; i < y - 1; i++)
+            for (int y_ = 1; y_ < y - 1; y_++)
             {
-                for (int j = 1; j < x - 1; j++)
-                {
-                    PlayingField.Add((i, j));
-                }
+                for (int x_ = 1; x_ < x - 1; x_++) PlayingField.Add((x_, y_));
             }
 
             Snake.Moved += CheckCollision;
@@ -143,6 +206,7 @@ namespace SnakeGame
                 for (int i = 0; i < x; i++)
                 {
                     Drawer.Draw(i, y, ch);
+
                     Walls_.Add((i, y));
                 }
             }
@@ -151,11 +215,11 @@ namespace SnakeGame
                 for (int i = 0; i < y; i++)
                 {
                     Drawer.Draw(x, i, ch);
+
                     Walls_.Add((x, i));
                 }
             }
         }
-
         private static void CheckCollision(Snake snake)
         {
             if (Walls_.Contains(snake.Head)) Snake.CanMove = false;
@@ -167,12 +231,26 @@ namespace SnakeGame
         public static void Draw(int x, int y, char ch)
         {
             SetCursorPosition(x, y);
+
+            Write(ch);
+        }
+        public static void Draw(Point point, char ch)
+        {
+            SetCursorPosition(point.x, point.y);
+
             Write(ch);
         }
 
         public static void Clear(int x, int y)
         {
             SetCursorPosition(x, y);
+
+            Write(" ");
+        }
+        public static void Clear(Point point)
+        {
+            SetCursorPosition(point.x, point.y);
+
             Write(" ");
         }
     }
@@ -184,15 +262,13 @@ namespace SnakeGame
 
         public static void SetFoodSymbol(char symbol) => foodSymbol = symbol;
 
-        public static void CreateFood(List<Point> snakeTail)
+        public static void GenerateFood(List<Point> snakeTail)
         {
-            Random random = new Random();
+            Point[] emptyPoints = Walls.PlayingField.Except(snakeTail).ToArray();
 
-            var emptyPoints = Walls.PlayingField.Except(snakeTail).ToArray();
+            FoodCoord = emptyPoints[new Random().Next(0, emptyPoints.Length)];
 
-            FoodCoord = emptyPoints[random.Next(0, emptyPoints.Length)];
-
-            Drawer.Draw(FoodCoord.x, FoodCoord.y, foodSymbol);
+            Drawer.Draw(FoodCoord, foodSymbol);
 
             Snake.Moved += CheckCollision;
         }
@@ -202,14 +278,19 @@ namespace SnakeGame
             if (FoodCoord == snake.Head)
             {
                 FoodCoord = (0, 0);
-                snake.CreateNewTail();
+
+                snake.CreateTail();
+
+                Snake.Moved -= CheckCollision;
+
                 await Task.Delay(2000);
-                CreateFood(snake.Points);
+
+                GenerateFood(snake.Points);
             }
         }
     }
 
-    struct Point
+    readonly struct Point
     {
         public Point((int x, int y) coords)
         {
@@ -222,8 +303,8 @@ namespace SnakeGame
             this.y = y;
         }
 
-        public int x;
-        public int y;
+        public readonly int x;
+        public readonly int y;
 
         public static implicit operator Point((int x, int y) coords) => new Point(coords);
 
@@ -236,66 +317,5 @@ namespace SnakeGame
         public override int GetHashCode() => base.GetHashCode();
 
         public override string ToString() => $"{x} {y}";
-    }
-
-    class Game
-    {
-        public static bool EndGame = false;
-
-        static void Main(string[] args)
-        {
-            SetWindowSize(LargestWindowWidth, LargestWindowHeight);
-            SetWindowPosition(0, 0);
-
-            WriteLine("Enter walls' length (X and Y)");
-
-            int[] coords;
-
-            do
-            {
-                coords = ReadLine().Split().Where(x => int.TryParse(x, out int x_)).Select(x => int.Parse(x)).ToArray();
-
-                if (coords.Length < 2) WriteLine("Invalid input: requires 2 numbers - X and Y lengths");
-            }
-            while (coords.Length < 2);
-
-            WriteLine("Enter walls', snake's and food's characters");
-
-            char[] wallChars;
-
-            do
-            {
-                wallChars = ReadLine().Split().Where(x => char.TryParse(x, out char x_)).Select(x => char.Parse(x)).ToArray();
-
-                if (wallChars.Length < 3) WriteLine("Invalid input: requires 3 symbols - walls', snake's and food's characters");
-            }
-            while (wallChars.Length < 3);
-
-            WriteLine("Enter snake's speed (0 - the slowest, 999 - the fastest, -1 - default)");
-
-            int speed = int.Parse(ReadLine());
-
-            Clear();
-
-            Walls.CreateWalls(coords[0], coords[1], wallChars[0]);
-
-            Snake snake = new Snake(speed >= 0 && speed < 1000 ? speed : 750, wallChars[1]);
-
-            Food.SetFoodSymbol(wallChars[2]);
-            Food.CreateFood(snake.Points);
-
-            CursorVisible = false;
-
-            Task.Run(snake.Move);
-
-            Task.Run(snake.ChangeRotation);
-
-            while (Snake.CanMove) { } // как бы это исправить
-
-            SetCursorPosition(0, Walls.EndWall.y + 1);
-            WriteLine("Game over");
-
-            ReadKey();
-        }
     }
 }
