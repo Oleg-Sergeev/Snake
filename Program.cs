@@ -13,21 +13,21 @@ namespace SnakeGame
         public static List<Point> PlayingField { get; private set; }
         public static Point EndWall { get; private set; }
 
-        public static void CreateWalls(int x, int y, char ch)
+        public static void CreateWalls(Point size, char ch)
         {
             Walls_ = new List<Point>();
             PlayingField = new List<Point>();
 
-            HorizontalWalls(x, 0, ch);
-            VerticalWalls(0, y, ch);
-            VerticalWalls(x - 1, y, ch);
-            HorizontalWalls(x, y - 1, ch);
+            HorizontalWalls(size.x, 0, ch);
+            VerticalWalls(0, size.y, ch);
+            VerticalWalls(size.x - 1, size.y, ch);
+            HorizontalWalls(size.x, size.y - 1, ch);
 
             EndWall = Walls_[^1];
 
-            for (int y_ = 1; y_ < y - 1; y_++)
+            for (int y = 1; y < size.y - 1; y++)
             {
-                for (int x_ = 1; x_ < x - 1; x_++) PlayingField.Add((x_, y_));
+                for (int x = 1; x < size.x - 1; x++) PlayingField.Add((x, y));
             }
 
             Snake.Moved += CheckCollision;
@@ -106,16 +106,88 @@ namespace SnakeGame
         }
     }
 
+    static class SaveSystem
+    {
+        public static void Save(string filePath, GameData gameData)
+        {
+            if (!File.Exists(filePath))
+            {
+                string directoryPath = filePath.Substring(0, filePath.LastIndexOf('\\'));
+                Directory.CreateDirectory(directoryPath);
+                File.Create(filePath).Close();
+            }
+
+            using StreamWriter writer = new StreamWriter(filePath);
+
+            int key = new Random().Next(1024);
+
+            int snakeSpeed = gameData.snakeSpeed;
+
+            writer.Write($"{EnDecrypt(gameData, key)} {Math.Pow(key, 2) * (snakeSpeed ^ key)}");
+        }
+
+        public static GameData Load(string filePath)
+        {
+            using StreamReader reader = new StreamReader(filePath);
+
+            string[] data = reader.ReadToEnd().Split();
+
+            if (data.Length < 6) return null;
+
+            GameData gameData = new GameData((data[0], data[1]), data[2..5].Select(x => char.Parse(x)).ToArray(), int.Parse(data[5]));
+
+            return EnDecrypt(gameData, (int)Math.Sqrt(int.Parse(data[^1]) / gameData.snakeSpeed));
+        }
+
+        private static GameData EnDecrypt(GameData data, int key)
+        {
+            data.wallsSize ^= key;
+
+            for (int i = 0; i < data.chars.Length; i++) data.chars[i] ^= (char)key;
+
+            data.snakeSpeed ^= key;
+
+            return data;
+        }
+    }
+
+    class GameData
+    {
+        public GameData(Point wallsSize, char[] chars, int snakeSpeed)
+        {
+            this.wallsSize = wallsSize;
+            this.chars = chars;
+            this.snakeSpeed = snakeSpeed;
+        }
+
+        public Point wallsSize;
+        public char[] chars;
+        public int snakeSpeed;
+
+        public override string ToString()
+        {
+            string c = "";
+
+            foreach (var ch in chars)
+            {
+                c += $"{ch} ";
+            }
+            c = c.Trim();
+
+            return $"{wallsSize} {c} {snakeSpeed}";
+        }
+    }
+
     class Program
     {
         private static async Task Main(string[] args)
         {
-            string directoryPath = @"C:\SnakeSettings";
-            string filePath = $@"{directoryPath}\Settings.ini";
+            string directoryPath = "SnakeSettings";
+            string filePath = $@"{directoryPath}\Settings.txt";
 
             int speed = 0;
-            int[] coords = null;
-            char[] wallChars = null;
+            Point coords = default;
+            char[] chars = null;
 
             SetWindowSize(LargestWindowWidth, LargestWindowHeight);
             SetWindowPosition(0, 0);
@@ -128,19 +200,18 @@ namespace SnakeGame
 
                 if (load)
                 {
-                    using StreamReader reader = new StreamReader(filePath);
-                    string[] output = reader.ReadToEnd().Split(new char[] { ' '}, StringSplitOptions.RemoveEmptyEntries);
+                    GameData data = SaveSystem.Load(filePath);
 
-                    if (output == null || output.Length < 5)
+                    if (data == null)
                     {
                         WriteLine("Can not load settings - empty file");
                         load = false;
                     }
                     else
                     {
-                        coords = new int[] { int.Parse(output[0]), int.Parse(output[1]) };
-                        wallChars = new char[] { char.Parse(output[2]), char.Parse(output[3]), char.Parse(output[4]) };
-                        speed = int.Parse(output[5]);
+                        coords = data.wallsSize;
+                        chars = data.chars;
+                        speed = data.snakeSpeed;
                     }
                 }
             }
@@ -156,20 +227,20 @@ namespace SnakeGame
                     int c = 0;
                     coords = ReadLine().Split().Where(x => int.TryParse(x, out c)).Select(x => c).ToArray();
 
-                    if (coords.Length < 2) WriteLine("Invalid input: requires 2 numbers - X and Y lengths");
+                    if (coords == default) WriteLine("Invalid input: requires 2 numbers - X and Y lengths");
                 }
-                while (coords.Length < 2);
+                while (coords == default);
 
                 WriteLine("Enter walls', snake's and food's characters");
 
                 do
                 {
                     char ch = default;
-                    wallChars = ReadLine().Split().Where(x => char.TryParse(x, out ch)).Select(x => ch).ToArray();
+                    chars = ReadLine().Split().Where(x => char.TryParse(x, out ch)).Select(x => ch).ToArray();
 
-                    if (wallChars.Length < 3) WriteLine("Invalid input: requires 3 symbols - walls', snake's and food's characters");
+                    if (chars.Length < 3) WriteLine("Invalid input: requires 3 symbols - walls', snake's and food's characters");
                 }
-                while (wallChars.Length < 3);
+                while (chars.Length < 3);
 
                 WriteLine("Enter snake's speed (1 - the slowest, 999 - the fastest, -1 - default)");
 
@@ -177,28 +248,17 @@ namespace SnakeGame
 
                 if (create)
                 {
-                    Directory.CreateDirectory(directoryPath);
-
-                    File.Create(filePath).Close();
-
-                    using StreamWriter writer = new StreamWriter(filePath);
-
-                    string coords_ = default;
-                    string wallChars_ = default;
-                    foreach (var c in coords) coords_ += $"{c.ToString()} ";
-                    foreach (var wc in wallChars) wallChars_ += $"{wc.ToString()} ";
-
-                    writer.WriteLine($"{coords_} {wallChars_} {speed}");
+                    SaveSystem.Save(filePath, new GameData(coords, (char[])chars.Clone(), speed));
                 }
             }
 
             Clear();
 
-            Walls.CreateWalls(coords[0], coords[1], wallChars[0]);
+            Walls.CreateWalls(coords, chars[0]);
 
-            Snake snake = new Snake(speed, wallChars[1]);
+            Snake snake = new Snake(speed, chars[1]);
 
-            Food food = new Food(wallChars[2], snake.Points);
+            Food food = new Food(chars[2], snake.Points);
 
             CursorVisible = false;
 
@@ -206,7 +266,7 @@ namespace SnakeGame
 
             SetCursorPosition(0, Walls.EndWall.y + 1);
 
-            WriteLine("Game over");
+            WriteLine($"Game over\nTotal snake's length - {snake.Points.Count}");
 
             ReadKey();
         }
@@ -382,8 +442,15 @@ namespace SnakeGame
         public readonly int y;
 
         public static implicit operator Point((int x, int y) coords) => new Point(coords);
+        public static implicit operator Point((string x, string y) coords) => new Point(int.Parse(coords.x), int.Parse(coords.y));
+        public static implicit operator Point(int[] coords)
+        {
+            if (coords.Length < 2) return default;
+            return new Point(coords[0], coords[1]);
+        }
 
         public static Point operator +(Point p1, Point p2) => new Point(p1.x + p2.x, p1.y + p2.y);
+        public static Point operator ^(Point p, int key) => new Point(p.x ^ key, p.y ^ key);
 
         public static bool operator ==(Point p1, Point p2) => p1.x == p2.x && p1.y == p2.y;
         public static bool operator !=(Point p1, Point p2) => p1.x != p2.x || p1.y != p2.y;
