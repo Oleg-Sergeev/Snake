@@ -88,6 +88,10 @@ namespace SnakeGame
 
     static class UI
     {
+        /// <summary>
+        /// Returns the bool (true/false) from string entered by the user
+        /// </summary>
+        /// <param name="message">This message will be displayed</param>
         public static bool Answer(string message)
         {
             string input = Read(message);
@@ -99,6 +103,10 @@ namespace SnakeGame
             return input == "yes" || input == "y";
         }
 
+        /// <summary>
+        /// Returns the string entered by the user
+        /// </summary>
+        /// <param name="message">This message will be displayed</param>
         public static string Read(string message = default)
         {
             if (!string.IsNullOrEmpty(message)) WriteLine(message);
@@ -121,9 +129,7 @@ namespace SnakeGame
 
             int key = new Random().Next(1024);
 
-            int snakeSpeed = gameData.snakeSpeed;
-
-            writer.Write($"{EnDecrypt(gameData, key)} {Math.Pow(key, 2) * (snakeSpeed ^ key)}");
+            writer.Write($"{EnDecrypt(gameData, key)} {EncryptKey(key, gameData.snakeSpeed)}");
         }
 
         public static GameData Load(string filePath)
@@ -132,11 +138,11 @@ namespace SnakeGame
 
             string[] data = reader.ReadToEnd().Split();
 
-            if (data.Length < 6) return null;
+            if (data.Length < 7) return default;
 
             GameData gameData = new GameData((data[0], data[1]), data[2..5].Select(x => char.Parse(x)).ToArray(), int.Parse(data[5]));
 
-            return EnDecrypt(gameData, (int)Math.Sqrt(int.Parse(data[^1]) / gameData.snakeSpeed));
+            return EnDecrypt(gameData, DecryptKey(int.Parse(data[^1]), gameData.snakeSpeed));
         }
 
         private static GameData EnDecrypt(GameData data, int key)
@@ -149,34 +155,10 @@ namespace SnakeGame
 
             return data;
         }
-    }
 
-    class GameData
-    {
-        public GameData(Point wallsSize, char[] chars, int snakeSpeed)
-        {
-            this.wallsSize = wallsSize;
-            this.chars = chars;
-            this.snakeSpeed = snakeSpeed;
-        }
-
-        public Point wallsSize;
-        public char[] chars;
-        public int snakeSpeed;
-
-        public override string ToString()
-        {
-            string c = "";
-
-            foreach (var ch in chars)
-            {
-                c += $"{ch} ";
-            }
-            c = c.Trim();
-
-            return $"{wallsSize} {c} {snakeSpeed}";
-        }
-    }
+        private static int EncryptKey(int key, int salt) => (int)Math.Pow(key, 2) * (salt ^ key);
+        private static int DecryptKey(int key, int salt) => (int)Math.Sqrt(key / salt);
+}
 
     class Program
     {
@@ -202,9 +184,9 @@ namespace SnakeGame
                 {
                     GameData data = SaveSystem.Load(filePath);
 
-                    if (data == null)
+                    if (data.Equals(default(GameData)))
                     {
-                        WriteLine("Can not load settings - empty file");
+                        WriteLine("Can not load settings - empty or damaged file");
                         load = false;
                     }
                     else
@@ -220,36 +202,27 @@ namespace SnakeGame
             {
                 bool create = UI.Answer("Would you like create new game settings?");
 
-                WriteLine("Enter walls' length (X and Y)");
-
                 do
                 {
                     int c = 0;
-                    coords = ReadLine().Split().Where(x => int.TryParse(x, out c)).Select(x => c).ToArray();
+                    coords = UI.Read("Enter walls' length (X and Y)").Split().Where(x => int.TryParse(x, out c)).Select(x => c).ToArray();
 
                     if (coords == default) WriteLine("Invalid input: requires 2 numbers - X and Y lengths");
                 }
                 while (coords == default);
 
-                WriteLine("Enter walls', snake's and food's characters");
-
                 do
                 {
                     char ch = default;
-                    chars = ReadLine().Split().Where(x => char.TryParse(x, out ch)).Select(x => ch).ToArray();
+                    chars = UI.Read("Enter walls', snake's and food's characters").Split().Where(x => char.TryParse(x, out ch)).Select(x => ch).ToArray();
 
                     if (chars.Length < 3) WriteLine("Invalid input: requires 3 symbols - walls', snake's and food's characters");
                 }
                 while (chars.Length < 3);
 
-                WriteLine("Enter snake's speed (1 - the slowest, 999 - the fastest, -1 - default)");
+                speed = int.Parse(UI.Read("Enter snake's speed (1 - the slowest, 999 - the fastest, -1 - default)"));
 
-                speed = int.Parse(ReadLine());
-
-                if (create)
-                {
-                    SaveSystem.Save(filePath, new GameData(coords, (char[])chars.Clone(), speed));
-                }
+                if (create) SaveSystem.Save(filePath, new GameData(coords, (char[])chars.Clone(), speed));
             }
 
             Clear();
@@ -425,6 +398,31 @@ namespace SnakeGame
         }
     }
 
+    struct GameData
+    {
+        public GameData(Point wallsSize, char[] chars, int snakeSpeed)
+        {
+            this.wallsSize = wallsSize;
+            this.chars = chars;
+            this.snakeSpeed = snakeSpeed;
+        }
+
+        public Point wallsSize;
+        public char[] chars;
+        public int snakeSpeed;
+
+        public override string ToString()
+        {
+            string symbols = "";
+
+            foreach (var ch in chars) symbols += $"{ch} ";
+
+            symbols = symbols.Trim();
+
+            return $"{wallsSize} {symbols} {snakeSpeed}";
+        }
+    }
+
     readonly struct Point
     {
         public Point((int x, int y) coords)
@@ -442,10 +440,16 @@ namespace SnakeGame
         public readonly int y;
 
         public static implicit operator Point((int x, int y) coords) => new Point(coords);
-        public static implicit operator Point((string x, string y) coords) => new Point(int.Parse(coords.x), int.Parse(coords.y));
+        public static implicit operator Point((string x, string y) coords)
+        {
+            if (!int.TryParse(coords.x, out int x) || !int.TryParse(coords.y, out int y)) return default;
+
+            return new Point(x, y);
+        }
         public static implicit operator Point(int[] coords)
         {
             if (coords.Length < 2) return default;
+
             return new Point(coords[0], coords[1]);
         }
 
