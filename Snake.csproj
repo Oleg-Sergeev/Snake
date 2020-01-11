@@ -11,4 +11,10 @@
     <None Include="..\.editorconfig" Link=".editorconfig" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Reference Include="ConsoleUI">
+      <HintPath>..\..\ConsoleUI\ConsoleUI\obj\Debug\netcoreapp3.1\ConsoleUI.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
 </Project>

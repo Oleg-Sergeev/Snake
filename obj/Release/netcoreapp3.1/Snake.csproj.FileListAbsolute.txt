@@ -1,0 +1,14 @@
+C:\Users\Oleg\source\repos\Snake\Snake\bin\Release\netcoreapp3.1\Snake.exe
+C:\Users\Oleg\source\repos\Snake\Snake\bin\Release\netcoreapp3.1\Snake.deps.json
+C:\Users\Oleg\source\repos\Snake\Snake\bin\Release\netcoreapp3.1\Snake.runtimeconfig.json
+C:\Users\Oleg\source\repos\Snake\Snake\bin\Release\netcoreapp3.1\Snake.runtimeconfig.dev.json
+C:\Users\Oleg\source\repos\Snake\Snake\bin\Release\netcoreapp3.1\Snake.dll
+C:\Users\Oleg\source\repos\Snake\Snake\bin\Release\netcoreapp3.1\Snake.pdb
+C:\Users\Oleg\source\repos\Snake\Snake\bin\Release\netcoreapp3.1\ConsoleUI.dll
+C:\Users\Oleg\source\repos\Snake\Snake\bin\Release\netcoreapp3.1\ConsoleUI.pdb
+C:\Users\Oleg\source\repos\Snake\Snake\obj\Release\netcoreapp3.1\Snake.AssemblyInfoInputs.cache
+C:\Users\Oleg\source\repos\Snake\Snake\obj\Release\netcoreapp3.1\Snake.AssemblyInfo.cs
+C:\Users\Oleg\source\repos\Snake\Snake\obj\Release\netcoreapp3.1\Snake.csproj.CopyComplete
+C:\Users\Oleg\source\repos\Snake\Snake\obj\Release\netcoreapp3.1\Snake.dll
+C:\Users\Oleg\source\repos\Snake\Snake\obj\Release\netcoreapp3.1\Snake.pdb
+C:\Users\Oleg\source\repos\Snake\Snake\obj\Release\netcoreapp3.1\Snake.csprojAssemblyReference.cache

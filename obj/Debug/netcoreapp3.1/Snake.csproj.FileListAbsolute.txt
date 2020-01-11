@@ -9,3 +9,6 @@ C:\Users\Oleg\source\repos\Snake\Snake\obj\Debug\netcoreapp3.1\Snake.AssemblyInf
 C:\Users\Oleg\source\repos\Snake\Snake\obj\Debug\netcoreapp3.1\Snake.AssemblyInfo.cs
 C:\Users\Oleg\source\repos\Snake\Snake\obj\Debug\netcoreapp3.1\Snake.dll
 C:\Users\Oleg\source\repos\Snake\Snake\obj\Debug\netcoreapp3.1\Snake.pdb
+C:\Users\Oleg\source\repos\Snake\Snake\bin\Debug\netcoreapp3.1\ConsoleUI.dll
+C:\Users\Oleg\source\repos\Snake\Snake\bin\Debug\netcoreapp3.1\ConsoleUI.pdb
+C:\Users\Oleg\source\repos\Snake\Snake\obj\Debug\netcoreapp3.1\Snake.csproj.CopyComplete
