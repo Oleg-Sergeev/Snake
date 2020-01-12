@@ -143,7 +143,8 @@ namespace Snake
                         message += Encoding.Unicode.GetString(numArray, 0, count);
                     }
                     while (ClientSocket.Available > 0);
-                    ProcessData(message);
+
+                    Task.Run(() => ProcessData(message));
                 }
             }
             catch (SocketException ex) when (ex.ErrorCode == 10004)
@@ -194,7 +195,7 @@ namespace Snake
 
                     Log(receivedData[1]);
 
-                    if (receivedData[2] == "NEWSPAWN") Snake = new Snake(Snake.Speed, Snake.SnakeSymbol, (98, 10), Snake.Rotation.Left);
+                    if (receivedData[2] == "NEWSPAWN") Snake = new Snake(Snake.Speed, Snake.SnakeSymbol, Field.PlayingField[^1], Snake.Rotation.Left);
                 }
             }
         }

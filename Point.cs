@@ -13,6 +13,8 @@
             this.y = y;
         }
 
+        public readonly int Max => x > y ? x : y;
+        public readonly int Min => x < y ? x : y;
         public readonly int x;
         public readonly int y;
 

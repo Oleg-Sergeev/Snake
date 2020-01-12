@@ -19,9 +19,9 @@ namespace Snake
 
         public void GenerateFood(List<Point> snakeBody)
         {
-            Point[] array = Walls.PlayingField.Except(snakeBody).ToArray();
+            Point[] emptyField = Field.PlayingField.Except(snakeBody).ToArray();
 
-            FoodCoord = array[new Random().Next(0, array.Length)];
+            FoodCoord = emptyField[new Random().Next(0, emptyField.Length)];
 
             Drawer.Draw(FoodCoord, FoodSymbol, true);
 

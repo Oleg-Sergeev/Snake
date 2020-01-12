@@ -1,5 +1,4 @@
-﻿using System;
-using System.IO;
+﻿using System.IO;
 using System.Linq;
 using System.Net.Sockets;
 using System.Threading.Tasks;
@@ -15,11 +14,9 @@ namespace Snake
             SetWindowSize(LargestWindowWidth, LargestWindowHeight);
             SetWindowPosition(0, 0);
 
-            StandartColor = ConsoleColor.White;
-
-            Snake snake = new Snake(900, 'o', new Point(), Snake.Rotation.Up);
+            Snake snake = new Snake(900, 'o');
             Client client = null;
-            Point coords = default;
+            Point borderSize = default;
             char[] chars = new char[3];
             int speed = 0;
 
@@ -28,36 +25,40 @@ namespace Snake
             if (client != null)
             {
                 speed = 850;
-                coords = new Point(100, 12);
+                borderSize = new Point(100, 12);
                 chars[0] = '#';
                 chars[1] = 'o';
                 chars[2] = Input<char>("Enter food symbol: ", false);
+
+                Field.InitializeBorders(borderSize, chars[2]);
+
                 client.InitializeSnake(snake);
                 await client.StartGame();
             }
             else
             {
-                string path = "SnakeSettings";
-                string str = path + "\\Settings.txt";
+                string directoryPath = "SnakeSettings";
+                string filePath = $@"{directoryPath}\Settings.txt";
 
                 bool load = false;
 
-                if (Directory.Exists(path) && File.Exists(str))
+                if (Directory.Exists(directoryPath) && File.Exists(filePath))
                 {
                     load = Input<bool>("Would you like load game settings?(True / False)");
                     if (load)
                     {
-                        GameData gameData = SaveSystem.Load(str);
-                        if (gameData.Equals(new GameData()))
+                        GameData gameData = SaveSystem.Load(filePath);
+
+                        if (!gameData.Equals(default))
                         {
-                            WarningLog("Can not load settings - empty or damaged file");
-                            load = false;
+                            borderSize = gameData.wallsSize;
+                            chars = gameData.chars;
+                            speed = gameData.snakeSpeed;
                         }
                         else
                         {
-                            coords = gameData.wallsSize;
-                            chars = gameData.chars;
-                            speed = gameData.snakeSpeed;
+                            WarningLog("Can not load settings - empty or damaged file");
+                            load = false;
                         }
                     }
                 }
@@ -68,15 +69,15 @@ namespace Snake
                     do
                     {
                         int c = 0;
-                        coords = (Input("Enter walls' length (X and Y)").Split()).Where(x => int.TryParse(x, out c)).Select(x => c).ToArray();
+                        borderSize = (Input("Enter walls' length (X and Y)").Split()).Where(x => int.TryParse(x, out c)).Select(x => c).ToArray();
 
-                        if (coords == default)  WarningLog("Invalid input: requires 2 numbers - X and Y lengths");
+                        if (borderSize == default)  WarningLog("Invalid input: requires 2 numbers - X and Y lengths");
                     }
-                    while (coords == default);
+                    while (borderSize == default);
 
                     do
                     {
-                        char ch = char.MinValue;
+                        char ch = default;
                         chars = (Input("Enter walls', snake's and food's characters").Split()).Where(x => char.TryParse(x, out ch)).Select(x => ch).ToArray();
 
                         if (chars.Length < 3) WarningLog("Invalid input: requires 3 symbols - walls', snake's and food's characters:");
@@ -85,18 +86,20 @@ namespace Snake
 
                     speed = Input<int>("Enter snake's speed (1 - the slowest, 999 - the fastest, -1 - default):");
 
-                    if (create) SaveSystem.Save(str, new GameData(coords, (char[])chars.Clone(), speed));
+                    if (create) SaveSystem.Save(filePath, new GameData(borderSize, (char[])chars.Clone(), speed));
                 }
+                Field.InitializeBorders(borderSize, chars[0]);
             }
-            Food food = new Food(chars[2]);
 
             Clear();
 
-            Walls.CreateWalls(coords, chars[0]);
+            Food food = new Food(chars[2]);
+
+            Field.DrawBorders();
 
             if (client == null)
             {
-                snake = new Snake(speed, chars[1], new Point(), Snake.Rotation.Up);
+                snake = new Snake(speed, chars[1]);
                 food.GenerateFood(snake.Points);
             }
             else food.GenerateFood(client.Snake.Points);
@@ -106,7 +109,7 @@ namespace Snake
             if (client != null) await Task.Run(client.Snake.Move);
             else await Task.Run(snake.Move);
 
-            SetCursorPosition(0, Walls.EndWall.y + 1);
+            SetCursorPosition(0, Field.EndWall.y + 1);
 
             if (client != null)
             {

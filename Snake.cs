@@ -7,7 +7,7 @@ namespace Snake
 {
     public class Snake
     {
-        public Snake(int speed, char symbol, Point spawnPoint = default, Rotation rotation = Rotation.Up)
+        public Snake(int speed, char symbol, Point spawnPoint = default, Rotation rotation = default)
         {
             Points = new List<Point>() { (1, 1) };
             if (spawnPoint != default) Points[0] = spawnPoint;
@@ -19,7 +19,7 @@ namespace Snake
             Head = points[points.Count - 1];
 
             this.rotation = Rotation.Right;
-            if (rotation != Rotation.Up) this.rotation = rotation;
+            if (rotation != default) this.rotation = rotation;
 
             if (speed >= 1000 || speed <= 0) speed = 750;
 
